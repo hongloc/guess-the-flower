@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guess the Flower</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #faf9f6;
+      --surface: #ffffff;
+      --border: #e5e2db;
+      --text: #1a1a18;
+      --muted: #6b6b65;
+      --green-bg: #eaf3de;
+      --green-text: #3b6d11;
+      --green-border: #639922;
+      --red-bg: #fcebeb;
+      --red-text: #a32d2d;
+      --red-border: #e24b4a;
+      --amber-bg: #faeeda;
+      --amber-text: #854f0b;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 2rem 1rem; }
+    #game { width: 100%; max-width: 480px; }
+    h1 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 500; letter-spacing: -0.5px; margin-bottom: 2px; }
+    .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+    .score-row { display: flex; gap: 8px; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .pill { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-size: 13px; color: var(--muted); }
+    .pill span { font-weight: 500; color: var(--text); }
+    .streak-badge { background: var(--amber-bg); border-radius: 999px; padding: 5px 12px; font-size: 12px; color: var(--amber-text); font-weight: 500; display: none; }
+    .img-frame { width: 100%; aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; background: var(--surface); position: relative; margin-bottom: 1.25rem; }
+    .img-frame img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .loading-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: var(--surface); }
+    .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--muted); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-overlay p { font-size: 13px; color: var(--muted); }
+    .hint-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--muted); margin-bottom: 1rem; min-height: 42px; display: flex; align-items: center; font-style: italic; }
+    .actions-row { margin-bottom: 1.25rem; }
+    .hint-btn { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--muted); cursor: pointer; transition: background 0.15s; }
+    .hint-btn:hover:not(:disabled) { background: var(--surface); }
+    .hint-btn:disabled { opacity: 0.5; cursor: default; }
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+    .choice-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s; line-height: 1.3; }
+    .choice-btn:hover:not(:disabled) { background: var(--bg); border-color: #aaa; }
+    .choice-btn:disabled { cursor: default; }
+    .choice-btn.correct { background: var(--green-bg); border-color: var(--green-border); color: var(--green-text); }
+    .choice-btn.wrong { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+    .result-row { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 1rem; }
+    .result-text { font-size: 15px; font-weight: 500; opacity: 0; transition: opacity 0.2s; }
+    .result-text.visible { opacity: 1; }
+    .result-text.correct { color: var(--green-text); }
+    .result-text.wrong { color: var(--red-text); }
+    .next-btn { background: var(--text); color: var(--bg); border: none; border-radius: 8px; padding: 10px 20px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; display: none; transition: opacity 0.15s; }
+    .next-btn:hover { opacity: 0.85; }
+    .powered { font-size: 11px; color: #aaa; text-align: center; margin-top: 1.5rem; }
+    .powered a { color: #888; text-decoration: none; }
+    .powered a:hover { text-decoration: underline; }
+    .end-screen { text-align: center; padding: 3rem 1rem; }
+    .end-screen .big-emoji { font-size: 48px; margin-bottom: 12px; }
+    .end-screen h2 { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 500; margin-bottom: 8px; }
+    .big-score { font-size: 52px; font-weight: 500; line-height: 1; margin-bottom: 4px; }
+    .big-label { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
+    .restart-btn { background: var(--text); color: var(--bg); border: none; border-radius: 8px; padding: 12px 28px; font-family: 'DM Sans', sans-serif; font-size: 15px; cursor: pointer; }
+    .restart-btn:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+<div id="game">
+  <h1>Guess the Flower</h1>
+  <p class="subtitle">AI-generated blooms — can you name them?</p>
+
+  <div class="score-row">
+    <div class="pill">Score <span id="score-val">0</span></div>
+    <div class="pill">Round <span id="round-val">1</span> / 10</div>
+    <div class="streak-badge" id="streak-badge">🔥 <span id="streak-val">0</span></div>
+  </div>
+
+  <div class="img-frame" id="img-frame">
+    <div class="loading-overlay" id="loading">
+      <div class="spinner"></div>
+      <p>Generating flower...</p>
+    </div>
+    <img id="flower-img" alt="mystery flower" />
+  </div>
+
+  <div class="hint-box" id="hint-box">Click "Show hint" for a clue</div>
+
+  <div class="actions-row">
+    <button class="hint-btn" id="hint-btn" onclick="showHint()">Show hint</button>
+  </div>
+
+  <div class="choices" id="choices"></div>
+
+  <div class="result-row">
+    <div class="result-text" id="result-text"></div>
+    <button class="next-btn" id="next-btn" onclick="nextRound()">Next flower →</button>
+  </div>
+
+  <div class="powered">
+    Powered by <a href="https://pollinations.ai" target="_blank">pollinations.ai</a> · Images generated by AI
+  </div>
+</div>
+
+<script>
+const FLOWERS = [
+  { name: "Rose", hint: "Classic symbol of love, often red", desc: "a beautiful red rose bloom, macro photography, soft petals, romantic" },
+  { name: "Sunflower", hint: "Follows the sun, bright yellow center", desc: "a vibrant sunflower in full bloom, golden yellow petals, blue sky background" },
+  { name: "Lavender", hint: "Purple herb with a calming scent", desc: "lavender flowers in bloom, purple spikes, Provence field, soft purple" },
+  { name: "Tulip", hint: "Spring icon, cup-shaped bloom", desc: "a single tulip flower close up, vivid red, smooth petals, studio lighting" },
+  { name: "Cherry Blossom", hint: "Japan's springtime icon", desc: "cherry blossom sakura flowers on branch, soft pink, bokeh background" },
+  { name: "Orchid", hint: "Exotic flower, often found in rainforests", desc: "exotic orchid flower close up, purple and white, elegant petals" },
+  { name: "Daisy", hint: "White petals with a yellow center", desc: "daisy flower macro photography, white petals yellow center, spring meadow" },
+  { name: "Hibiscus", hint: "Tropical, used in herbal tea", desc: "hibiscus flower in full bloom, vivid red tropical flower, large petals" },
+  { name: "Lotus", hint: "Sacred flower in Asian culture, grows on water", desc: "lotus flower blooming on water, pink and white, serene pond" },
+  { name: "Dandelion", hint: "Kids love to blow on this one", desc: "dandelion flower with seeds, macro photography, delicate white fluff" },
+  { name: "Marigold", hint: "Bright orange, used in festivals", desc: "marigold flower close up, bright orange petals, festive" },
+  { name: "Peony", hint: "Big, fluffy, romantic bloom", desc: "peony flower in full bloom, soft pink, lush petals, romantic" },
+];
+
+const DISTRACTORS = ["Rose","Sunflower","Lavender","Tulip","Cherry Blossom","Orchid","Daisy","Hibiscus","Lotus","Dandelion","Marigold","Peony","Iris","Poppy","Jasmine","Violet","Lily","Daffodil","Chrysanthemum","Magnolia"];
+
+let score = 0, round = 0, streak = 0, answered = false, hintShown = false, sequence = [];
+
+function shuffle(arr) { return arr.slice().sort(() => Math.random() - 0.5); }
+
+function buildSequence() { sequence = shuffle(FLOWERS).slice(0, 10); }
+
+function getChoices(correct) {
+  const wrong = shuffle(DISTRACTORS.filter(d => d !== correct)).slice(0, 3);
+  return shuffle([correct, ...wrong]);
+}
+
+async function loadRound() {
+  answered = false; hintShown = false;
+  const flower = sequence[round];
+
+  document.getElementById('round-val').textContent = round + 1;
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('hint-box').textContent = 'Click "Show hint" for a clue';
+  document.getElementById('hint-btn').disabled = false;
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('next-btn').textContent = round === 9 ? 'See results →' : 'Next flower →';
+
+  const res = document.getElementById('result-text');
+  res.className = 'result-text';
+  res.textContent = '';
+
+  const img = document.getElementById('flower-img');
+  const loading = document.getElementById('loading');
+  img.style.display = 'none';
+  loading.style.display = 'flex';
+
+  const seed = Math.floor(Math.random() * 99999);
+  // API call goes through our server — key stays hidden!
+  const url = `/api/image?prompt=${encodeURIComponent(flower.desc + ', photorealistic, nature photography')}&width=512&height=512&seed=${seed}`;
+
+  img.onload = () => { loading.style.display = 'none'; img.style.display = 'block'; };
+  img.onerror = () => { loading.querySelector('p').textContent = 'Image failed — try next round'; };
+  img.src = url;
+
+  const choices = getChoices(flower.name);
+  const container = document.getElementById('choices');
+  container.innerHTML = '';
+  choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = c;
+    btn.onclick = () => answer(c, flower.name);
+    container.appendChild(btn);
+  });
+
+  const badge = document.getElementById('streak-badge');
+  badge.style.display = streak >= 2 ? 'inline-block' : 'none';
+  document.getElementById('streak-val').textContent = streak;
+}
+
+function showHint() {
+  if (answered || hintShown) return;
+  hintShown = true;
+  document.getElementById('hint-box').textContent = sequence[round].hint;
+  document.getElementById('hint-btn').disabled = true;
+}
+
+function answer(chosen, correct) {
+  if (answered) return;
+  answered = true;
+  document.getElementById('hint-btn').disabled = true;
+
+  document.querySelectorAll('.choice-btn').forEach(btn => {
+    btn.disabled = true;
+    if (btn.textContent === correct) btn.className = 'choice-btn correct';
+    else if (btn.textContent === chosen) btn.className = 'choice-btn wrong';
+  });
+
+  const res = document.getElementById('result-text');
+  if (chosen === correct) {
+    const pts = hintShown ? 5 : 10;
+    score += pts;
+    streak++;
+    res.textContent = streak >= 3 ? `Correct! +${pts} pts — ${streak}x streak!` : `Correct! +${pts} pts`;
+    res.className = 'result-text visible correct';
+  } else {
+    streak = 0;
+    res.textContent = `It was ${correct}`;
+    res.className = 'result-text visible wrong';
+  }
+
+  document.getElementById('score-val').textContent = score;
+  const badge = document.getElementById('streak-badge');
+  badge.style.display = streak >= 2 ? 'inline-block' : 'none';
+  document.getElementById('streak-val').textContent = streak;
+  document.getElementById('next-btn').style.display = 'inline-block';
+}
+
+function nextRound() {
+  round++;
+  if (round >= 10) { showEnd(); return; }
+  loadRound();
+}
+
+function showEnd() {
+  const pct = Math.round((score / 100) * 100);
+  const emoji = pct >= 80 ? '🌸' : pct >= 50 ? '🌼' : '🌱';
+  const msg = pct >= 80 ? 'Master Botanist!' : pct >= 50 ? 'Flower Friend!' : 'Seedling — keep growing!';
+  document.getElementById('game').innerHTML = `
+    <div class="end-screen">
+      <div class="big-emoji">${emoji}</div>
+      <h2>${msg}</h2>
+      <div class="big-score">${score}</div>
+      <div class="big-label">out of 100 points</div>
+      <button class="restart-btn" onclick="location.reload()">Play again</button>
+      <div class="powered" style="margin-top:1.5rem">
+        Powered by <a href="https://pollinations.ai" target="_blank">pollinations.ai</a>
+      </div>
+    </div>
+  `;
+}
+
+buildSequence();
+loadRound();
+</script>
+</body>
+</html>
