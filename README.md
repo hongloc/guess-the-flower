@@ -2,63 +2,87 @@
 
 An AI-powered flower guessing game built with [pollinations.ai](https://pollinations.ai).
 
-Each round generates a unique photorealistic flower image via the pollinations.ai image API. Guess the flower name from 4 choices, earn streaks, and score up to 100 points!
+## Run locally
 
-## Setup
-
-### 1. Install dependencies
+### Step 1 — Install Netlify CLI
 ```bash
-npm install
+npm install -g netlify-cli
 ```
 
-### 2. Add your API key
-Copy the example env file and fill in your key from [enter.pollinations.ai](https://enter.pollinations.ai):
+### Step 2 — Set up your API key
 ```bash
 cp .env.example .env
 ```
-Then edit `.env`:
+Edit `.env` and paste your real key from [enter.pollinations.ai](https://enter.pollinations.ai):
 ```
 POLLINATIONS_API_KEY=sk_your_real_key_here
-PORT=3000
 ```
 
-### 3. Run the app
+### Step 3 — Start the dev server
 ```bash
-npm start
+netlify dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:8888](http://localhost:8888) in your browser.
 
-For development with auto-reload:
+> ⚠️ Don't open `index.html` directly in the browser — the image function won't work without `netlify dev` running.
+
+### Debugging
+If images fail, check your terminal output. The function logs the exact status code and error from pollinations.ai so you can see what's going wrong.
+
+---
+
+## Deploy to Netlify
+
+### Step 1 — Push to GitHub
 ```bash
-npm run dev
+git init
+git add .
+git commit -m "initial commit"
+git remote add origin https://github.com/YOUR_USERNAME/guess-the-flower.git
+git push -u origin main
 ```
 
-## How it works
+### Step 2 — Connect to Netlify
+1. Go to [netlify.com](https://netlify.com) and log in
+2. Click **"Add new site" → "Import an existing project"**
+3. Choose **GitHub** and select your repo
+4. Build settings are auto-detected from `netlify.toml` — just click **Deploy**
 
-The API key is kept **server-side only**. The frontend calls `/api/image` on your Express server, which proxies the request to pollinations.ai with the secret key attached — the key is never exposed to the browser.
+### Step 3 — Add your API key
+1. In Netlify dashboard go to **Site configuration → Environment variables**
+2. Click **"Add a variable"**
+3. Key: `POLLINATIONS_API_KEY`
+   Value: your `sk_...` key from [enter.pollinations.ai](https://enter.pollinations.ai)
+4. Click **Save** then **Trigger redeploy**
 
-```
-Browser → /api/image?prompt=... → Express server → pollinations.ai (with sk_ key)
-```
+That's it — your site is live! 🎉
+
+---
 
 ## Project structure
 
 ```
 guess-the-flower/
-├── .env              # your secret key (never commit this!)
-├── .env.example      # template for others
-├── .gitignore        # excludes .env and node_modules
-├── package.json
-├── server/
-│   └── index.js      # Express server + image proxy
-└── public/
-    └── index.html    # game frontend
+├── index.html                  ← game frontend
+├── netlify.toml                ← Netlify config
+├── .env                        ← your secret key (never commit!)
+├── .env.example                ← template (safe to commit)
+├── .gitignore                  ← excludes .env and node_modules
+└── netlify/
+    └── functions/
+        └── image.js            ← serverless proxy (key lives here)
 ```
+
+## How the key stays hidden
+
+```
+Browser → /.netlify/functions/image?prompt=... → Netlify Function → gen.pollinations.ai (with sk_ key)
+```
+
+The `sk_` key only exists in your `.env` locally and as a Netlify environment variable in production — it never touches the frontend.
 
 ## Built with
 - [pollinations.ai](https://pollinations.ai) — AI image generation
-- Express.js — backend server
+- Netlify Functions — serverless backend
 - Vanilla JS + HTML/CSS — frontend
-
-[![Built With pollinations.ai](https://image.pollinations.ai/prompt/pollinations%20ai%20logo?width=120&height=30&nologo=true)](https://pollinations.ai)
